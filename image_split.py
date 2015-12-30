@@ -1,6 +1,6 @@
 from PIL import Image
 import argparse
-from os import walk
+from os import walk, path
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -19,15 +19,9 @@ if __name__ == '__main__':
         required=True
     )
     parser.add_argument(
-        '--max',
+        '--size',
         type=int,
         help='Max size of larger dimension after resize',
-        required=True
-    )
-    parser.add_argument(
-        '--min',
-        type=int,
-        help='Min size of smaller dimension after resize. Has higher priority than --max',
         required=True
     )
 
@@ -43,26 +37,36 @@ if __name__ == '__main__':
 
     for f in files:
         try:
+            filename, file_extension = path.splitext(f)
+
             img = Image.open(in_dir + f)
             width = img.size[0]
             height = img.size[1]
 
-            smallest = min(width, height)
-            largest = max(width, height)
+            top = 0
+            left = 0
+            bottom = min(args.size, height)
+            right = min(args.size, width)
 
-            k = 1
+            i = 1
+            while True:
+                while True:
+                    cropped = img.crop((left, top, right, bottom))
+                    cropped.save(out_dir + filename + str(i) + file_extension)
+                    i += 1
 
-            if largest > args.max:
-                k = args.max / float(largest)
+                    if right >= width:
+                        break
 
-            smallest *= k
-            largest *= k
+                    right = min(right + args.size, width)
+                    left = right - args.size
 
-            if smallest < args.min:
-                k *= args.min / float(smallest)
+                if bottom >= height:
+                    break
 
-            size = width * k, height * k
-            img.thumbnail(size, Image.ANTIALIAS)
-            img.save(out_dir + f, "JPEG")
+                bottom = min(bottom + args.size, height)
+                top = bottom - args.size
+                left = 0
+                right = args.size
         except IOError:
-            print "cannot resize image"
+            print "Error cropping image"
